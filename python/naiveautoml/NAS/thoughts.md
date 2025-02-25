@@ -11,3 +11,4 @@ Perhaps those architectures with the highest accuracies could be used as the bas
 - How to define the search space? 
 - Is there any property from the training set that could be used to delimit the search space?
 - What about the solver and the activation functions?
+- What about a progressive approach to the search space? Perhaps start by the fastest training parameters, and out of those isolate them and combine them, get the most accurate one and proceed to change other parameters 

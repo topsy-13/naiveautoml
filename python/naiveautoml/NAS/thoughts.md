@@ -4,7 +4,7 @@ The results were interesting, out of the top 5 architectures found in the 50-epo
 Perhaps those architectures with the highest accuracies could be used as the basis for next steps in training. 
 
 # Ideas
-- Perhaps an early stopping of testing the architectures could be implemented once a certain % of all the pre-defined architectures are tested and none achieve higher results than the best one found yet. 
+- Perhaps an early stopping of testing the architectures could be implemented once a certain % of all the pre-defined architectures are tested and none achieve higher results than the best one found yet. **Optimal stopping problem**
 - If the top 5 architectures are later on tested with different parameters, isn't that a sort of overly simplified evolutionary algorithm?
 - What will happen if each parameter found for the best architecture is isolated? 
 - What's the most time expensive parameter? What is its tradeoff? 
@@ -15,3 +15,8 @@ Perhaps those architectures with the highest accuracies could be used as the bas
 - Could it be possible to define the size of each layer based on the top 5 results layer sizes?
 - What about concatenating the top architectures?
 - What about mixing or alternating the pre-trained layers of the top layers?
+
+
+
+# Optimal Stopping Problem
+The implementation of the optimal stopping problem can effectively reduce the time of identification of the best architecure by approximately 50% in most scenarios. This, combined with the One Epoch Training approach and GPU support, enables the execution of 27 architectures that previously required 5 hours to be completed in just 15 seconds.

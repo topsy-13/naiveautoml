@@ -12,13 +12,13 @@ def unpickle(file):
         dict = pickle.load(fo, encoding='bytes')
     return dict
 
-def load_cifar10_data(return_as='array', scaling=True):
+def load_cifar10_data(return_as='array', scaling=True, cifar_path="CIFAR-10"):
     # Initialize variables
     X_train, y_train = [], []
     X_test, y_test = [], []
 
     # Load all the paths of the pickle files
-    cifar_path = "CIFAR-10"
+    
     files_path = os.listdir(cifar_path)
 
     # Load training data

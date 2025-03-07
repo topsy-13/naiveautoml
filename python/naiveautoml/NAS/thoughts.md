@@ -1,6 +1,6 @@
 # Loading the CIFAR-10 dataset
 I trained 27 structures with early stop when for 50 epochs there was no increase found in the validation accuracy. Then I tested the same architectures with one single epoch and checked the same metric. 
-The results were interesting, out of the top 5 architectures found in the 50-epochs-without-increase training, 4 were identified as well as the 5 most accurate in the One-Epoch approach. This supports the method of using such a strategy to reduce computational load since the 50 epochs training took aproximmately 4 hours, against 4 minutes in the One-Epoch.
+    The results were interesting, out of the top 5 architectures found in the 50-epochs-without-increase training, 4 were identified as well as the 5 most accurate in the One-Epoch approach. This supports the method of using such a strategy to reduce computational load since the 50 epochs training took aproximmately 4 hours, against 4 minutes in the One-Epoch.
 Perhaps those architectures with the highest accuracies could be used as the basis for next steps in training. 
 
 # Ideas
@@ -20,3 +20,5 @@ Perhaps those architectures with the highest accuracies could be used as the bas
 
 # Optimal Stopping Problem
 The implementation of the optimal stopping problem can effectively reduce the time of identification of the best architecure by approximately 50% in most scenarios. This, combined with the One Epoch Training approach and GPU support, enables the execution of 27 architectures that previously required 5 hours to be completed in just 15 seconds.
+
+

@@ -23,14 +23,15 @@ class MLP(nn.Module):
         self.network = nn.Sequential(*layers)
         
         # Define optimizer and loss function
-        self.optimizer = optim.Adam(self.model.parameters(), lr=hp['lr'])
+        self.optimizer = optim.Adam(self.parameters(), lr=hp['lr'])
         self.criterion = nn.CrossEntropyLoss()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def forward(self, x):
         return self.network(x)
 
-    def train(self, train_loader):
-        self.train()
+    def train_model(self, train_loader):
+        super().train()
         running_loss = 0.0
         for images, labels in train_loader:
             images, labels = images.to(self.device), labels.to(self.device)
@@ -39,7 +40,7 @@ class MLP(nn.Module):
             images = images.view(images.size(0), -1)
 
             self.optimizer.zero_grad()
-            outputs = self.model(images)
+            outputs = self(images)
             loss = self.criterion(outputs, labels)
             loss.backward()
             self.optimizer.step()
@@ -61,7 +62,7 @@ class MLP(nn.Module):
                 # Flatten images
                 images = images.view(images.size(0), -1)
 
-                outputs = self.model(images)
+                outputs = self(images)
                 loss = self.criterion(outputs, labels)
                 test_loss += loss.item()
 
@@ -69,13 +70,13 @@ class MLP(nn.Module):
                 correct += (predicted == labels).sum().item()
                 total += labels.size(0)
         
-        accuracy = 100 * correct / total
+        accuracy = correct / total
         return test_loss / len(test_loader), accuracy
     
     
 class Experiment:
 
-    def __init__(self, architecture, train_strategy='OE', random_seed=13):
+    def __init__(self, architecture:dict, train_strategy:str='OE', random_seed:int=13):
         """_summary_
 
         Args:
@@ -115,18 +116,16 @@ class Experiment:
             raise ValueError(f"Invalid architecture '{architecture}'. Valid options are: ['OE', 'ES'].")
         pass
         
+    
+    def build_MLP(self):
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = MLP(input_size=self.architecture['input_size'], 
                          neuron_structure=self.architecture['hlayers_size'],
                          num_classes=self.architecture['output_size'],
                          hp={'lr': self.architecture['lr']}
-                         )
-        
-    
-    def build_MLP(self, input_size, hidden_layers_size, num_classes):
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = MLP(input_size, hidden_layers_size, num_classes).to(self.device)
+                         ).to(self.device)
 
-    def train_and_evalue(self, train_loader, val_loader):
+    def train_and_evaluate(self, train_loader, test_loader):
         if hasattr(self, 'model'):
             pass
         else:
@@ -134,9 +133,10 @@ class Experiment:
 
         if self.strategy == 'OE':
             pass
-
-        train_loss = self.model.train(train_loader)
-        test_loss, test_accuracy = self.model.evaluate(val_loader)
+        print(f"train_loader type: {type(train_loader)}")
+        print(f"test_loader type: {type(test_loader)}")
+        train_loss = self.model.train_model(train_loader=train_loader)
+        test_loss, test_accuracy = self.model.evaluate(test_loader)
 
         # Store results
         results = {

@@ -2,6 +2,18 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+import numpy as np
+import random
+
+
+def set_seed(seed=13):
+    random.seed(seed)  # Python's built-in random module
+    np.random.seed(seed)  # NumPy
+    torch.manual_seed(seed)  # PyTorch CPU
+    torch.cuda.manual_seed(seed)  # PyTorch GPU (if available)
+    torch.cuda.manual_seed_all(seed)  # If using multi-GPU
+    torch.backends.cudnn.deterministic = True  # Ensures deterministic behavior
+    torch.backends.cudnn.benchmark = False  # Disables auto-optimization for conv layers (useful for exact reproducibility)
 
 class MLP(nn.Module):
     def __init__(self, input_size, neuron_structure:list, num_classes, hp:dict):
@@ -9,7 +21,6 @@ class MLP(nn.Module):
         # Define first layer
         layers = []
         prev_size = input_size
-
         # Create hidden layers
         # Neuron Structure is expecting a list
         for neurons in neuron_structure:
@@ -27,10 +38,15 @@ class MLP(nn.Module):
         self.criterion = nn.CrossEntropyLoss()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+        self.best_val_loss = float('inf')
+        self.epochs_without_improvement = 0
+        self.early_stopping_patience = 50
+
     def forward(self, x):
         return self.network(x)
+    
 
-    def train_model(self, train_loader):
+    def oe_train(self, train_loader):
         super().train()
         running_loss = 0.0
         for images, labels in train_loader:
@@ -48,6 +64,31 @@ class MLP(nn.Module):
             running_loss += loss.item()
 
         return running_loss / len(train_loader)
+
+    def es_train(self, train_loader, val_loader):
+        epoch = 0
+        while True:  # Infinite loop until early stopping condition is met
+            epoch += 1
+            train_loss = self.oe_train(train_loader)
+            val_loss, accuracy = self.evaluate(val_loader)
+
+            print(f'Epoch {epoch}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}')
+
+            # Check for improvement
+            if val_loss < self.best_val_loss:
+                self.best_val_loss = val_loss
+                self.epochs_without_improvement = 0
+                # TODO: Save the model here
+
+            else:
+                self.epochs_without_improvement += 1
+
+            # Check for early stopping
+            if self.epochs_without_improvement >= self.early_stopping_patience:
+                print(f'Early stopping triggered after {epoch} epochs.')
+                break
+        return train_loss
+
 
     def evaluate(self, test_loader):
         self.eval()
@@ -69,7 +110,8 @@ class MLP(nn.Module):
                 _, predicted = torch.max(outputs, 1)
                 correct += (predicted == labels).sum().item()
                 total += labels.size(0)
-        
+                
+        self.train()  # Restore training mode
         accuracy = correct / total
         return test_loss / len(test_loader), accuracy
     
@@ -115,7 +157,8 @@ class Experiment:
         if train_strategy not in ['OE', 'ES']:
             raise ValueError(f"Invalid architecture '{architecture}'. Valid options are: ['OE', 'ES'].")
         pass
-        
+    
+            
     
     def build_MLP(self):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -125,17 +168,16 @@ class Experiment:
                          hp={'lr': self.architecture['lr']}
                          ).to(self.device)
 
-    def train_and_evaluate(self, train_loader, test_loader):
-        if hasattr(self, 'model'):
-            pass
-        else:
-            raise AttributeError(f"The model has not been created yet, use .build_MLP first.")
-
+    def build_train_and_evaluate(self, train_loader, test_loader):
+        set_seed(self.random_seed)
+        self.build_MLP()
+        
+        # Training strategy
         if self.strategy == 'OE':
-            pass
-        print(f"train_loader type: {type(train_loader)}")
-        print(f"test_loader type: {type(test_loader)}")
-        train_loss = self.model.train_model(train_loader=train_loader)
+            train_loss = self.model.oe_train(train_loader=train_loader)
+        elif self.strategy == 'ES':
+            train_loss = self.model.es_train(train_loader=train_loader, val_loader=test_loader)
+
         test_loss, test_accuracy = self.model.evaluate(test_loader)
 
         # Store results

@@ -79,9 +79,9 @@ def load_cifar10_data(return_as='array', scaling=True, cifar_path="CIFAR-10"):
     return X_train, y_train, X_val, y_val, X_test, y_test
 
 
-def DatasetandLoader():
+def DatasetandLoader(cifar_path):
     # Load the data
-    X_train, y_train, X_val, y_val, X_test, y_test = load_cifar10_data(return_as='tensor', scaling=True)
+    X_train, y_train, X_val, y_val, X_test, y_test = load_cifar10_data(return_as='tensor', scaling=True, cifar_path=cifar_path)
 
     # Create datasets and loaders
     batch_size = 64

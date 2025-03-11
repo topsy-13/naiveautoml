@@ -196,6 +196,9 @@ class Experiment:
                          num_classes=self.architecture['output_size'],
                          hp={'lr': self.architecture['lr']}
                          ).to(self.device)
+        return
+    
+
     def build_train_and_evaluate(self, train_loader, val_loader, test_loader=None):
         set_seed(self.random_seed)
         self.build_MLP()
@@ -240,21 +243,9 @@ class Experiment:
         return results
 
 
-
     def generate_learning_curve(self, train_dataset, val_dataset, batch_size=32):
         """
         Generate a learning curve using train and test datasets.
-        
-        Parameters:
-        train_dataset: PyTorch Dataset containing the training data
-        eval_dataset: PyTorch Dataset containing the test data
-        batch_size: Batch size for the data loaders
-        num_epochs: Number of epochs to train each model
-        
-        Returns:
-        absolute_sizes: Actual training sizes used
-        train_scores: Training accuracy for each size
-        test_scores: Test accuracy for each size
         """
 
         # Get the full size of the training dataset
@@ -286,18 +277,6 @@ class Experiment:
             # Create model
             results = self.build_train_and_evaluate(train_loader=train_loader, val_loader=val_loader)
 
-            # self.build_MLP()
-            
-            # if self.strategy == 'OE':
-            #     # Train model
-            #     subset_train_loss, subset_train_acc = self.model.oe_train(train_loader=train_loader)
-            #     # Evaluate model
-            #     subset_val_loss, subset_val_acc = self.model.evaluate(test_loader=val_loader)
-                
-            # elif self.strategy == 'ES':
-            #     # Train model
-            #     subset_train_loss, subset_train_acc, subset_val_loss, subset_val_acc = self.model.es_train(train_loader=train_loader, val_loader=val_loader)
-
             # Store results
             train_accuracies.append(results['train_accuracy'])
             train_losses.append(results['train_loss'])
@@ -313,3 +292,5 @@ class Experiment:
         }
         
         return lc_dict
+    
+    

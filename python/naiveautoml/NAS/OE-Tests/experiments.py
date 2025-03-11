@@ -263,7 +263,7 @@ class Experiment:
         # Create test loader (consistent for all evaluations)
         val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
         
-        DATASET_SIZES = 100
+        DATASET_SIZES = 30
         training_sizes = np.linspace(10, full_train_size, DATASET_SIZES, dtype=int)
 
         # Lists to store results

@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader, TensorDataset, random_split, Subset
 
 import numpy as np
 import random
+import time
 
 
 def set_seed(seed=13):
@@ -201,6 +202,7 @@ class Experiment:
 
     def build_train_and_evaluate(self, train_loader, val_loader, test_loader=None):
         set_seed(self.random_seed)
+        
         self.build_MLP()
         
         # Initialize neuron data
@@ -216,16 +218,23 @@ class Experiment:
         val_loss, val_acc = None, None
         test_loss, test_acc = None, None
 
+        # ? Where to start the timer?
+        # Start timing
+        start_time = time.time()
+        
         # Get loss, accuracy per dataset
         if self.strategy == 'OE':
             train_loss, train_acc = self.model.oe_train(train_loader)
             val_loss, val_acc = self.model.evaluate(val_loader)
+            epoch_time_diff = time.time() - start_time # * After validation because training for ES it considers validation time as well.
             
             if test_loader is not None:
                 test_loss, test_acc = self.model.evaluate(test_loader)
 
         elif self.strategy == 'ES':
             train_loss, train_acc, val_loss, val_acc = self.model.es_train(train_loader=train_loader, val_loader=val_loader)
+            epoch_time_diff = time.time() - start_time
+
             
             if test_loader is not None:
                 test_loss, test_acc = self.model.evaluate(test_loader)
@@ -237,7 +246,8 @@ class Experiment:
             'val_loss': val_loss,
             'val_accuracy': val_acc,
             'test_loss': test_loss,
-            'test_accuracy': test_acc
+            'test_accuracy': test_acc,
+            'train_val_time': epoch_time_diff
         })
 
         return results
@@ -245,7 +255,7 @@ class Experiment:
 
     def generate_learning_curve(self, train_dataset, val_dataset, batch_size=32):
         """
-        Generate a learning curve using train and test datasets.
+        Generate a learning curve using train and validation datasets.
         """
 
         # Get the full size of the training dataset

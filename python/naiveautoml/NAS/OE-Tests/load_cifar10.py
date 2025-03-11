@@ -79,7 +79,7 @@ def load_cifar10_data(return_as='array', scaling=True, cifar_path="CIFAR-10"):
     return X_train, y_train, X_val, y_val, X_test, y_test
 
 
-def DatasetandLoader(cifar_path):
+def load_and_create_loaders(cifar_path, return_ds:bool=False):
     # Load the data
     X_train, y_train, X_val, y_val, X_test, y_test = load_cifar10_data(return_as='tensor', scaling=True, cifar_path=cifar_path)
 
@@ -95,4 +95,7 @@ def DatasetandLoader(cifar_path):
     test_dataset = torch.utils.data.TensorDataset(X_test, y_test)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
-    return train_loader, val_loader, test_loader
+    if return_ds:
+        return train_dataset, val_dataset, test_dataset
+    else:
+        return train_loader, val_loader, test_loader

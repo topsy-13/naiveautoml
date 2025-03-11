@@ -105,23 +105,25 @@ class MLP(nn.Module):
         return train_loss, train_acc
 
     
-    def es_train(self, train_loader, val_loader, test_loader):
+    def es_train(self, train_loader, val_loader, test_loader=None):
         epoch = 0
+        epoch_test_loss, epoch_test_acc = None, None  # Initialize test metrics
+
         while True:  # Infinite loop until early stopping condition is met
             epoch += 1
-            epoch_train_loss, epoch_train_acc = self.oe_train(train_loader) # Train one epoch
+            epoch_train_loss, epoch_train_acc = self.oe_train(train_loader)  # Train one epoch
+            
             # Validation set
             epoch_val_loss, epoch_val_acc = self.evaluate(val_loader)
-            # Test set
-            epoch_test_loss, epoch_test_acc = self.evaluate(test_loader)
-
-            # print(f'Epoch {epoch}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}')
+            
+            # Test set (only if test_loader is provided)
+            if test_loader is not None:
+                epoch_test_loss, epoch_test_acc = self.evaluate(test_loader)
 
             # Check for improvement
             if epoch_val_loss < self.best_val_loss:
                 self.best_val_loss = epoch_val_loss
                 self.epochs_without_improvement = 0
-
             else:
                 self.epochs_without_improvement += 1
 
@@ -131,6 +133,7 @@ class MLP(nn.Module):
                 break
 
         return epoch_train_loss, epoch_train_acc, epoch_val_loss, epoch_val_acc, epoch_test_loss, epoch_test_acc
+
 
 
     def evaluate(self, test_loader):

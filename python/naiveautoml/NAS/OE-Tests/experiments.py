@@ -42,10 +42,7 @@ class MLP(nn.Module):
         self.criterion = nn.CrossEntropyLoss()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        # Attributes for ES
-        self.best_val_loss = float('inf')
-        self.epochs_without_improvement = 0
-        self.early_stopping_patience = 50 # Fixed value of epochs wo improvement
+
         return
     
 
@@ -106,9 +103,14 @@ class MLP(nn.Module):
         return train_loss, train_acc
 
     
-    def es_train(self, train_loader, val_loader, test_loader=None):
+    def es_train(self, train_loader, val_loader, verbose=False):
+        # Attributes for ES
+        self.best_val_loss = float('inf')
+        self.epochs_without_improvement = 0
+        self.early_stopping_patience = 20 # Fixed value of epochs wo improvement
+
         epoch = 0
-        epoch_test_loss, epoch_test_acc = None, None  # Initialize test metrics
+        best_model_state = None
 
         while True:  # Infinite loop until early stopping condition is met
             epoch += 1
@@ -117,23 +119,25 @@ class MLP(nn.Module):
             # Validation set
             epoch_val_loss, epoch_val_acc = self.evaluate(val_loader)
             
-            # Test set (only if test_loader is provided)
-            if test_loader is not None:
-                epoch_test_loss, epoch_test_acc = self.evaluate(test_loader)
-
             # Check for improvement
             if epoch_val_loss < self.best_val_loss:
                 self.best_val_loss = epoch_val_loss
                 self.epochs_without_improvement = 0
+                best_model_state = self.state_dict()  # Save best model parameters
             else:
                 self.epochs_without_improvement += 1
 
             # Check for early stopping
             if self.epochs_without_improvement >= self.early_stopping_patience:
-                print(f'Early stopping triggered after {epoch} epochs.')
+                if verbose:
+                    print(f'Early stopping triggered after {epoch} epochs.')
                 break
 
-        return epoch_train_loss, epoch_train_acc, epoch_val_loss, epoch_val_acc, epoch_test_loss, epoch_test_acc
+        # Restore best model before returning
+        if best_model_state is not None:
+            self.load_state_dict(best_model_state)
+        
+        return epoch_train_loss, epoch_train_acc, epoch_val_loss, epoch_val_acc
 
 
 
@@ -185,12 +189,13 @@ class Experiment:
         self.random_seed = random_seed
         
         if train_strategy not in ['OE', 'ES']:
-            raise ValueError(f"Invalid architecture '{architecture}'. Valid options are: ['OE', 'ES'].")
+            raise ValueError(f"Invalid strategy '{train_strategy}'. Valid options are: ['OE', 'ES'].")
         pass
     
             
     
     def build_MLP(self):
+        set_seed(self.random_seed)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = MLP(input_size=self.architecture['input_size'], 
                          neuron_structure=self.architecture['hlayers_size'],
@@ -200,10 +205,7 @@ class Experiment:
         return
     
 
-    def build_train_and_evaluate(self, train_loader, val_loader, test_loader=None):
-        set_seed(self.random_seed)
-        
-        self.build_MLP()
+    def train_and_evaluate(self, train_loader, val_loader, test_loader=None):
         
         # Initialize neuron data
         results = {
@@ -253,9 +255,9 @@ class Experiment:
         return results
 
 
-    def generate_learning_curve(self, train_dataset, val_dataset, batch_size=32):
+    def generate_learning_curve(self, train_dataset, val_dataset, batch_size=32, metric='loss', verbose=False):
         """
-        Generate a learning curve using train and validation datasets.
+        Generate a learning curve using train and validation datasets. Requires the model being already built
         """
 
         # Get the full size of the training dataset
@@ -264,8 +266,8 @@ class Experiment:
         # Create test loader (consistent for all evaluations)
         val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
         
-        DATASET_SIZES = 30
-        training_sizes = np.linspace(10, full_train_size, DATASET_SIZES, dtype=int)
+        DATASET_SIZES = 20
+        training_sizes = np.logspace(1, np.log10(full_train_size), DATASET_SIZES, dtype=int)
 
         # Lists to store results
         train_accuracies = []
@@ -275,7 +277,8 @@ class Experiment:
         
         # For each training size
         for train_size in training_sizes:
-            print(f"\nTraining with {train_size} samples...")
+            if verbose:
+                print(f"\nTraining with {train_size} samples...")
             
             # Get random subset of the training data
             indices = torch.randperm(full_train_size)[:train_size]
@@ -284,8 +287,8 @@ class Experiment:
             # Create train loader from subset
             train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=True)
             set_seed(self.random_seed)
-            # Create model
-            results = self.build_train_and_evaluate(train_loader=train_loader, val_loader=val_loader)
+            # Train and evaluate model
+            results = self.train_and_evaluate(train_loader=train_loader, val_loader=val_loader)
 
             # Store results
             train_accuracies.append(results['train_accuracy'])
@@ -293,14 +296,46 @@ class Experiment:
             val_accuracies.append(results['val_accuracy'])
             val_losses.append(results['val_loss'])
             
-        lc_dict = {
-            'Dataset Size': training_sizes,
-            'Train Accuracy': train_accuracies,
-            'Train Losses': train_losses,
-            'Val Accuracy': val_accuracies,
-            'Val Losses': val_losses,
-        }
+        # lc_dict = {
+        #     'Dataset Size': training_sizes,
+        #     'Train Accuracy': train_accuracies,
+        #     'Train Losses': train_losses,
+        #     'Val Accuracy': val_accuracies,
+        #     'Val Losses': val_losses,
+        # }
         
-        return lc_dict
+        if metric == 'loss':
+            return train_losses, val_losses
+        elif metric == 'acc':
+            return train_accuracies, val_accuracies
+        else:
+            raise ValueError(f"Invalid metric'{metric}'. Valid options are: ['loss', 'acc'].")
     
-    
+    def full_experiment(self, train_dataset, val_dataset, test_dataset, batch_size):
+        self.batch_size = batch_size
+
+        set_seed(self.random_seed)
+        # Build the loader
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
+        test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
+        
+        # Build, train, validate and test the model
+        self.build_MLP()
+        results = self.train_and_evaluate(train_loader=train_loader,
+                                          val_loader=val_loader, 
+                                          test_loader=test_loader)
+        
+        # Get the learning curve of the trained model
+        train_losses, val_losses = self.generate_learning_curve(train_dataset=train_dataset, 
+                                     val_dataset=val_dataset, 
+                                     batch_size=batch_size)
+        
+        # return everything as a dict
+        results['LC_Train'] = train_losses
+        results['LC_Validation'] = val_losses
+        results['Strategy'] = self.strategy
+        results['Seed'] = self.random_seed
+        results['Batch Size'] = self.batch_size
+
+        return results

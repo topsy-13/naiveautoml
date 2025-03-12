@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, TensorDataset, random_split, Subset
 import numpy as np
 import random
 import time
-
+from itertools import product
 
 def set_seed(seed=13):
     random.seed(seed)  # Python's built-in random module
@@ -17,6 +17,48 @@ def set_seed(seed=13):
     torch.backends.cudnn.deterministic = True  # Ensures deterministic behavior
     torch.backends.cudnn.benchmark = False  # Disables auto-optimization for conv layers (useful for exact reproducibility)
     return
+
+
+def generate_architectures(n_hidden_layers, n_neurons_x_layer, learning_rate, input_size, num_classes, symmetric=False):
+
+    architectures = []
+
+    # For symmetric MLP:
+    if symmetric: 
+        search_space = list(product(n_hidden_layers, n_neurons_x_layer, learning_rate))
+
+        for i, (h, n, lr) in enumerate(search_space):
+                # Set layers w same size
+                neuron_structure = (np.ones(h) * n).astype(int)
+
+                architecture = {
+                                'input_size': input_size,
+                                'hlayers_size': neuron_structure,
+                                'lr': lr,
+                                'num_classes': num_classes
+                                }
+                architectures.append(architecture)
+
+    else:
+        # For each number of hidden layers
+        for h in n_hidden_layers:
+            # Generate all possible neuron configurations for h layers
+            neuron_configs = product(n_neurons_x_layer, repeat=h)
+            
+            # For each neuron configuration and learning rate
+            for neuron_config in neuron_configs:
+                for lr in learning_rate:
+                    # Add this combination to the search space
+                    architecture = {
+                        'input_size': input_size,
+                        'hlayers_size': neuron_config,
+                        'lr': lr,
+                        'num_classes': num_classes
+                    }
+                    architectures.append(architecture)
+        
+    print('Total of architectures:', len(architectures))
+    return architectures
 
 
 class MLP(nn.Module):

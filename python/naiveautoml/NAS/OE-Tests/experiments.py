@@ -103,41 +103,46 @@ class MLP(nn.Module):
         return train_loss, train_acc
 
     
-    def es_train(self, train_loader, val_loader, verbose=False):
-        # Attributes for ES
-        self.best_val_loss = float('inf')
-        self.epochs_without_improvement = 0
-        self.early_stopping_patience = 20 # Fixed value of epochs wo improvement
+def es_train(self, train_loader, val_loader, verbose=False):
+    # Early stopping parameters
+    early_stopping_patience = 20
+    best_val_loss = float('inf')
+    epochs_without_improvement = 0
 
-        epoch = 0
-        best_model_state = None
+    epoch = 0
+    best_model_state = None
+    best_train_loss, best_train_acc, best_val_acc = None, None, None
 
-        while True:  # Infinite loop until early stopping condition is met
-            epoch += 1
-            epoch_train_loss, epoch_train_acc = self.oe_train(train_loader)  # Train one epoch
-            
-            # Validation set
-            epoch_val_loss, epoch_val_acc = self.evaluate(val_loader)
-            
-            # Check for improvement
-            if epoch_val_loss < self.best_val_loss:
-                self.best_val_loss = epoch_val_loss
-                self.epochs_without_improvement = 0
-                best_model_state = self.state_dict()  # Save best model parameters
-            else:
-                self.epochs_without_improvement += 1
+    while True:  # Infinite loop until early stopping condition is met
+        epoch += 1
+        epoch_train_loss, epoch_train_acc = self.oe_train(train_loader)  # Train one epoch
 
-            # Check for early stopping
-            if self.epochs_without_improvement >= self.early_stopping_patience:
-                if verbose:
-                    print(f'Early stopping triggered after {epoch} epochs.')
-                break
+        # Validation set
+        epoch_val_loss, epoch_val_acc = self.evaluate(val_loader)
 
-        # Restore best model before returning
-        if best_model_state is not None:
-            self.load_state_dict(best_model_state)
-        
-        return epoch_train_loss, epoch_train_acc, epoch_val_loss, epoch_val_acc
+        # Check for improvement
+        if epoch_val_loss < best_val_loss:
+            best_val_loss = epoch_val_loss
+            best_train_loss = epoch_train_loss
+            best_train_acc = epoch_train_acc
+            best_val_acc = epoch_val_acc
+            epochs_without_improvement = 0
+            best_model_state = self.state_dict()  # Save best model parameters
+        else:
+            epochs_without_improvement += 1
+
+        # Check for early stopping
+        if epochs_without_improvement >= early_stopping_patience:
+            if verbose:
+                print(f'Early stopping triggered after {epoch} epochs.')
+            break
+
+    # Restore best model before returning
+    if best_model_state is not None:
+        self.load_state_dict(best_model_state)
+
+    return best_train_loss, best_train_acc, best_val_loss, best_val_acc
+
 
 
 
@@ -221,11 +226,11 @@ class Experiment:
         test_loss, test_acc = None, None
 
         # ? Where to start the timer?
-        # Start timing
-        start_time = time.time()
         
         # Get loss, accuracy per dataset
         if self.strategy == 'OE':
+            # Start timing
+            start_time = time.time()
             train_loss, train_acc = self.model.oe_train(train_loader)
             val_loss, val_acc = self.model.evaluate(val_loader)
             epoch_time_diff = time.time() - start_time # * After validation because training for ES it considers validation time as well.
@@ -234,6 +239,8 @@ class Experiment:
                 test_loss, test_acc = self.model.evaluate(test_loader)
 
         elif self.strategy == 'ES':
+            # Start timing
+            start_time = time.time()
             train_loss, train_acc, val_loss, val_acc = self.model.es_train(train_loader=train_loader, val_loader=val_loader)
             epoch_time_diff = time.time() - start_time
 

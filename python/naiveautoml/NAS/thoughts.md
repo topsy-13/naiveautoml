@@ -22,3 +22,17 @@ Perhaps those architectures with the highest accuracies could be used as the bas
 The implementation of the optimal stopping problem can effectively reduce the time of identification of the best architecure by approximately 50% in most scenarios. This, combined with the One Epoch Training approach and GPU support, enables the execution of 27 architectures that previously required 5 hours to be completed in just 15 seconds.
 
 
+# Learning Curve
+The calculation of the Learning Curve via ES required 5 min for a single architecture:
+
+```python
+    # Architecture:
+    input_size = 32 * 32 * 3  # 3072 features per image
+    hidden_layers = [1000, 1000] 
+    num_classes = 10  # CIFAR-10 has 10 classes
+    lr = 0.001
+
+    # Dataset sizes:
+    DATASET_SIZES = 20
+    training_sizes = np.logspace(1, np.log10(full_train_size), DATASET_SIZES, dtype=int)
+```

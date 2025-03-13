@@ -145,47 +145,45 @@ class MLP(nn.Module):
         return train_loss, train_acc
 
     
-def es_train(self, train_loader, val_loader, verbose=False):
-    # Early stopping parameters
-    early_stopping_patience = 20
-    best_val_loss = float('inf')
-    epochs_without_improvement = 0
+    def es_train(self, train_loader, val_loader, verbose=False):
+        # Early stopping parameters
+        early_stopping_patience = 20
+        best_val_loss = float('inf')
+        epochs_without_improvement = 0
 
-    epoch = 0
-    best_model_state = None
-    best_train_loss, best_train_acc, best_val_acc = None, None, None
+        epoch = 0
+        best_model_state = None
+        best_train_loss, best_train_acc, best_val_acc = None, None, None
 
-    while True:  # Infinite loop until early stopping condition is met
-        epoch += 1
-        epoch_train_loss, epoch_train_acc = self.oe_train(train_loader)  # Train one epoch
+        while True:  # Infinite loop until early stopping condition is met
+            epoch += 1
+            epoch_train_loss, epoch_train_acc = self.oe_train(train_loader)  # Train one epoch
 
-        # Validation set
-        epoch_val_loss, epoch_val_acc = self.evaluate(val_loader)
+            # Validation set
+            epoch_val_loss, epoch_val_acc = self.evaluate(val_loader)
 
-        # Check for improvement
-        if epoch_val_loss < best_val_loss:
-            best_val_loss = epoch_val_loss
-            best_train_loss = epoch_train_loss
-            best_train_acc = epoch_train_acc
-            best_val_acc = epoch_val_acc
-            epochs_without_improvement = 0
-            best_model_state = self.state_dict()  # Save best model parameters
-        else:
-            epochs_without_improvement += 1
+            # Check for improvement
+            if epoch_val_loss < best_val_loss:
+                best_val_loss = epoch_val_loss
+                best_train_loss = epoch_train_loss
+                best_train_acc = epoch_train_acc
+                best_val_acc = epoch_val_acc
+                epochs_without_improvement = 0
+                best_model_state = self.state_dict()  # Save best model parameters
+            else:
+                epochs_without_improvement += 1
 
-        # Check for early stopping
-        if epochs_without_improvement >= early_stopping_patience:
-            if verbose:
-                print(f'Early stopping triggered after {epoch} epochs.')
-            break
+            # Check for early stopping
+            if epochs_without_improvement >= early_stopping_patience:
+                if verbose:
+                    print(f'Early stopping triggered after {epoch} epochs.')
+                break
 
-    # Restore best model before returning
-    if best_model_state is not None:
-        self.load_state_dict(best_model_state)
+        # Restore best model before returning
+        if best_model_state is not None:
+            self.load_state_dict(best_model_state)
 
-    return best_train_loss, best_train_acc, best_val_loss, best_val_acc
-
-
+        return best_train_loss, best_train_acc, best_val_loss, best_val_acc
 
 
     def evaluate(self, test_loader):
@@ -360,7 +358,7 @@ class Experiment:
         else:
             raise ValueError(f"Invalid metric'{metric}'. Valid options are: ['loss', 'acc'].")
     
-    def full_experiment(self, train_dataset, val_dataset, test_dataset, batch_size):
+    def full_experiment(self, train_dataset, val_dataset, test_dataset, batch_size, verbose=False):
         self.batch_size = batch_size
 
         set_seed(self.random_seed)
@@ -376,9 +374,10 @@ class Experiment:
                                           test_loader=test_loader)
         
         # Get the learning curve of the trained model
+        self.build_MLP()
         train_losses, val_losses = self.generate_learning_curve(train_dataset=train_dataset, 
                                      val_dataset=val_dataset, 
-                                     batch_size=batch_size)
+                                     batch_size=batch_size, verbose=verbose)
         
         # return everything as a dict
         results['LC_Train'] = train_losses
